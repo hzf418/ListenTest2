@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>英语听力教学（考试）音频生成</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- 配置Tailwind自定义样式 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3B82F6',
+            secondary: '#10B981',
+            accent: '#8B5CF6',
+            neutral: '#64748B',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .text-shadow {
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .transition-height {
+        transition: max-height 0.3s ease-in-out;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+  <!-- 提示音音频元素（隐藏） -->
+  <audio id="dingSound" preload="auto">
+    <!-- 使用多个备选音频源 -->
+    <source src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" type="audio/mpeg">
+    <source src="https://soundbible.com/grab.php?id=1598&type=mp3" type="audio/mpeg">
+  </audio>
+  
+  <!-- 顶部导航 - 严格左-中-右布局 -->
+  <header class="bg-white shadow-md fixed w-full top-0 z-50 transition-all duration-300">
+    <div class="container mx-auto px-4 py-6 flex items-center justify-between">
+      <!-- 左侧：标题（英语听力考试音频生成工具） -->
+      <div class="flex items-center">
+        <h1 class="text-xl md:text-2xl font-bold text-gray-800 text-left">英语听力教学（考试）音频生成</h1>
+      </div>
+      
+      <!-- 中间：logo + 创作/指导信息（水平排列） -->
+      <div class="flex items-center space-x-4">
+        <!-- 加大logo：w-20 h-20 -->
+        <img src="./systemfile/logo.jpg" alt="石狮初中英语选编" class="w-20 h-20 object-contain" id="toolLogo">
+        <!-- 创作/指导信息（加大字体） -->
+        <div class="text-base md:text-lg text-gray-800 font-semibold text-center">
+          创作：石狮市第二中学洪振芳；<br class="md:hidden">指导：石狮市教师进修学校李涌
+        </div>
+      </div>
+      
+      <!-- 右侧：帮助按钮 -->
+      <div class="flex items-center">
+        <button id="helpBtn" class="text-neutral hover:text-primary transition-colors flex items-center text-base">
+          <i class="fa fa-question-circle mr-1"></i> 帮助
+        </button>
+      </div>
+      
+      <!-- 移动端菜单按钮（仅移动端显示） -->
+      <button class="md:hidden text-gray-700 ml-4" id="mobileMenuBtn">
+        <i class="fa fa-bars text-2xl"></i>
+      </button>
+    </div>
+    <!-- 移动端菜单 - 保持原有功能 -->
+    <div id="mobileMenu" class="hidden md:hidden bg-white border-t px-4 py-2">
+      <div class="w-full text-left py-2 text-xl font-bold text-gray-800">英语听力考试音频生成工具</div>
+      <button id="mobileHelpBtn" class="w-full text-left py-2 text-neutral hover:text-primary transition-colors flex items-center">
+        <i class="fa fa-question-circle mr-2"></i> 帮助
+      </button>
+      <div class="w-full text-left py-2 text-base text-gray-800 font-semibold border-t mt-1 pt-3">
+        创作：石狮市第二中学洪振芳；指导：石狮市教师进修学校李涌
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 - 调整顶部内边距（适配导航栏高度） -->
+  <main class="container mx-auto px-4 pt-44 pb-16">
+    <!-- 介绍卡片 -->
+    <div class="bg-white rounded-lg shadow-sm p-5 mb-6">
+      <p class="text-gray-700">
+        自动生成符合考试标准的英语听力音频，支持完整考试流程，包含中文指令、英文听力内容及标准停顿时间。
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- 左侧：文本输入区 -->
+      <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div class="p-4 border-b flex justify-between items-center">
+            <h2 class="font-semibold text-gray-800">听力文稿输入</h2>
+            <div class="flex space-x-2">
+              <button id="clearTextBtn" class="text-neutral hover:text-red-500 transition-colors p-1" title="清空">
+                <i class="fa fa-trash-o"></i>
+              </button>
+              <button id="loadExamBtn" class="text-neutral hover:text-primary transition-colors p-1" title="加载2022福建中考听力">
+                <i class="fa fa-file-text-o"></i> 加载考试素材
+              </button>
+            </div>
+          </div>
+          <div class="p-4">
+            <textarea 
+              id="scriptInput" 
+              class="w-full h-96 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none resize-none transition-all"
+              placeholder="请输入完整听力考试内容，格式说明：
+- 中文指令行以 C: 开头
+- 英文女声1以 W1: 开头
+- 英文女声2以 W2: 开头
+- 英文男声1以 M1: 开头
+- 英文男声2以 M2: 开头
+- 停顿时间以 P: 数字 开头（单位：秒）
+- 提示音以 D: 开头（播放叮咚提示音）
+
+例如：
+D:
+C: 现在开始试音
+W1: Hello, this is a test.
+P: 2
+M1: How are you?
+W2: I'm fine, thank you.
+M2: Nice to meet you.
+"
+            ></textarea>
+            <div class="mt-3 flex items-center text-sm text-gray-500">
+              <span id="charCount">0 字符</span>
+              <span class="mx-2">|</span>
+              <span id="lineCount">0 行</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧：设置和控制区 -->
+      <div class="lg:col-span-1 space-y-6">
+        <!-- 语音设置 -->
+        <div class="bg-white rounded-lg shadow-sm p-4">
+          <h2 class="font-semibold text-gray-800 mb-4">语音设置</h2>
+          
+          <div class="space-y-4">
+            <!-- 中文语音选择 -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">中文指令语音</label>
+              <div class="flex items-center">
+                <select id="chineseVoice" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary/20 focus:ring-opacity-50">
+                  <!-- 选项将由JS动态填充 -->
+                  <option value="">加载中...</option>
+                </select>
+                <button id="testChineseVoice" class="ml-2 text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded transition-colors">测试</button>
+              </div>
+            </div>
+            
+            <!-- 女声1选择 -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">英文女声1 (W1)</label>
+              <div class="flex items-center">
+                <select id="femaleVoice1" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary/20 focus:ring-opacity-50">
+                  <!-- 选项将由JS动态填充 -->
+                  <option value="">加载中...</option>
+                </select>
+                <button id="testFemaleVoice1" class="ml-2 text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded transition-colors">测试</button>
+              </div>
+            </div>
+            
+            <!-- 女声2选择 -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">英文女声2 (W2)</label>
+              <div class="flex items-center">
+                <select id="femaleVoice2" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary/20 focus:ring-opacity-50">
+                  <!-- 选项将由JS动态填充 -->
+                  <option value="">加载中...</option>
+                </select>
+                <button id="testFemaleVoice2" class="ml-2 text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded transition-colors">测试</button>
+              </div>
+            </div>
+            
+            <!-- 男声1选择 -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">英文男声1 (M1)</label>
+              <div class="flex items-center">
+                <select id="maleVoice1" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary/20 focus:ring-opacity-50">
+                  <!-- 选项将由JS动态填充 -->
+                  <option value="">加载中...</option>
+                </select>
+                <button id="testMaleVoice1" class="ml-2 text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded transition-colors">测试</button>
+              </div>
+            </div>
+            
+            <!-- 男声2选择 -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">英文男声2 (M2)</label>
+              <div class="flex items-center">
+                <select id="maleVoice2" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary/20 focus:ring-opacity-50">
+                  <!-- 选项将由JS动态填充 -->
+                  <option value="">加载中...</option>
+                </select>
+                <button id="testMaleVoice2" class="ml-2 text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded transition-colors">测试</button>
+              </div>
+            </div>
+            
+            <!-- 提示音设置 -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">提示音音量</label>
+              <input 
+                type="range" 
+                id="dingVolume" 
+                min="0.1" 
+                max="1.0" 
+                step="0.1" 
+                value="0.7"
+                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+              >
+              <div class="mt-2">
+                <button id="testDingBtn" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-3 rounded text-sm transition-colors">
+                  测试提示音
+                </button>
+              </div>
+            </div>
+            
+            <!-- 语速设置 -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                语速: <span id="rateValue">1.0</span>x (考试建议: 0.9-1.0)
+              </label>
+              <input 
+                type="range" 
+                id="speechRate" 
+                min="0.7" 
+                max="1.3" 
+                step="0.1" 
+                value="1.0"
+                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+              >
+            </div>
+          </div>
+        </div>
+        
+        <!-- 操作控制 - 已删除下载按钮和进度条 -->
+        <div class="bg-white rounded-lg shadow-sm p-4">
+          <h2 class="font-semibold text-gray-800 mb-4">考试控制</h2>
+          
+          <div class="space-y-3">
+            <button 
+              id="generateBtn" 
+              class="w-full bg-primary hover:bg-primary/90 text-white py-3 px-4 rounded-lg transition-colors flex items-center justify-center font-medium"
+            >
+              <i class="fa fa-magic mr-2"></i> 生成考试音频
+            </button>
+            
+            <button 
+              id="playBtn" 
+              class="w-full bg-secondary hover:bg-secondary/90 text-white py-3 px-4 rounded-lg transition-colors flex items-center justify-center font-medium"
+              disabled
+            >
+              <i class="fa fa-play mr-2"></i> 开始播放考试
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 音频播放区 - 已移除audio标签的进度条 -->
+    <div class="mt-6 bg-white rounded-lg shadow-sm p-4 hidden" id="audioPlayerContainer">
+      <h2 class="font-semibold text-gray-800 mb-3">听力考试播放</h2>
+      <div class="flex flex-col md:flex-row gap-4 items-center justify-center">
+        <audio id="audioPlayer" class="hidden">
+          您的浏览器不支持音频播放
+        </audio>
+        
+        <div class="flex items-center space-x-4">
+          <button id="playSelectedBtn" class="text-primary hover:text-primary/80 p-3 border border-primary/30 rounded hover:bg-primary/5 transition-colors text-base">
+            <i class="fa fa-step-forward mr-1"></i> 播放选中部分
+          </button>
+          <button id="stopBtn" class="text-neutral hover:text-red-500 p-3 border border-gray-300 rounded hover:bg-gray-50 transition-colors text-base">
+            <i class="fa fa-stop mr-1"></i> 停止
+          </button>
+        </div>
+      </div>
+      
+      <!-- 段落列表 -->
+      <div class="mt-4">
+        <h3 class="text-sm font-medium text-gray-700 mb-2">听力内容列表</h3>
+        <div id="paragraphsList" class="space-y-2 max-h-60 overflow-y-auto p-2 border border-gray-200 rounded-lg">
+          <!-- 段落列表将动态生成 -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 帮助模态框 -->
+  <div id="helpModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="p-5 border-b flex justify-between items-center">
+        <h3 class="text-lg font-bold text-gray-800">使用帮助</h3>
+        <button id="closeHelpBtn" class="text-gray-500 hover:text-gray-700">
+          <i class="fa fa-times text-xl"></i>
+        </button>
+      </div>
+      <div class="p-5 space-y-4">
+        <div>
+          <h4 class="font-semibold text-gray-700">文本格式说明</h4>
+          <ul class="list-disc pl-5 mt-2 space-y-1 text-gray-600">
+            <li>中文指令行以 C: 开头，例如: C: 现在开始听力考试</li>
+            <li>英文女声1以 W1: 开头，例如: W1: Hello, how are you?</li>
+            <li>英文女声2以 W2: 开头，例如: W2: I'm fine, thank you.</li>
+            <li>英文男声1以 M1: 开头，例如: M1: How's the weather today?</li>
+            <li>英文男声2以 M2: 开头，例如: M2: It's sunny and warm.</li>
+            <li>停顿时间以 P: 数字 开头（单位：秒），例如: P: 5</li>
+            <li>提示音以 D: 开头，用于播放叮咚提示音，例如: D:</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-semibold text-gray-700">提示音问题解决</h4>
+          <ul class="list-disc pl-5 mt-2 space-y-1 text-gray-600">
+            <li>如果提示音无法播放，请点击"测试提示音"按钮检查音频设置</li>
+            <li>确保浏览器允许播放音频，某些浏览器需要用户交互才能播放声音</li>
+            <li>如果外部音频源不可用，系统会尝试使用浏览器内置的音频生成方法</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-semibold text-gray-700">语音选择说明</h4>
+          <ul class="list-disc pl-5 mt-2 space-y-1 text-gray-600">
+            <li>每个语音类型都可以单独选择不同的语音</li>
+            <li>点击"测试"按钮可以预览选中的语音</li>
+            <li>建议选择清晰、自然的语音以获得最佳听力效果</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通知提示 -->
+  <div id="notification" class="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center">
+    <i id="notificationIcon" class="fa fa-info-circle mr-2"></i>
+    <span id="notificationText"></span>
+  </div>
+
+  <script>
+    // DOM元素引用
+    const scriptInput = document.getElementById('scriptInput');
+    const charCount = document.getElementById('charCount');
+    const lineCount = document.getElementById('lineCount');
+    const clearTextBtn = document.getElementById('clearTextBtn');
+    const loadExamBtn = document.getElementById('loadExamBtn');
+    const generateBtn = document.getElementById('generateBtn');
+    const playBtn = document.getElementById('playBtn');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const audioPlayerContainer = document.getElementById('audioPlayerContainer');
+    const paragraphsList = document.getElementById('paragraphsList');
+    const playSelectedBtn = document.getElementById('playSelectedBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const speechRate = document.getElementById('speechRate');
+    const rateValue = document.getElementById('rateValue');
+    const femaleVoice1 = document.getElementById('femaleVoice1');
+    const femaleVoice2 = document.getElementById('femaleVoice2');
+    const maleVoice1 = document.getElementById('maleVoice1');
+    const maleVoice2 = document.getElementById('maleVoice2');
+    const chineseVoice = document.getElementById('chineseVoice');
+    const helpBtn = document.getElementById('helpBtn');
+    const mobileHelpBtn = document.getElementById('mobileHelpBtn');
+    const closeHelpBtn = document.getElementById('closeHelpBtn');
+    const helpModal = document.getElementById('helpModal');
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const notification = document.getElementById('notification');
+    const notificationIcon = document.getElementById('notificationIcon');
+    const notificationText = document.getElementById('notificationText');
+    const dingSound = document.getElementById('dingSound');
+    const dingVolume = document.getElementById('dingVolume');
+    const testDingBtn = document.getElementById('testDingBtn');
+    const testChineseVoice = document.getElementById('testChineseVoice');
+    const testFemaleVoice1 = document.getElementById('testFemaleVoice1');
+    const testFemaleVoice2 = document.getElementById('testFemaleVoice2');
+    const testMaleVoice1 = document.getElementById('testMaleVoice1');
+    const testMaleVoice2 = document.getElementById('testMaleVoice2');
+
+    // 全局变量
+    let selectedParagraph = -1;
+    let speechSynthesis = window.speechSynthesis;
+    let utterances = [];
+    let isPlaying = false;
+    let currentUtteranceIndex = 0;
+    let voiceLoadAttempts = 0; // 语音加载尝试次数
+    let useFallbackDing = false; // 是否使用备选提示音
+    let pauseTimeout = null; // 停止计时器
+
+    // 2022年福建省初中学业水平考试英语听力内容（带提示音）
+    const fujianExam2022 = `D:
+C: 听力试听，并启封试卷袋
+D:
+C: 这是2022年福建省初中学业水平考试，英语科，听力部分。该部分共三节。
+C: 注意：回答听力部分时，请先将答案标在试卷上，听力考试结束前，你将有2分钟的时间将你的答案填涂到答题卡上。
+C: 现在是听力试音时间。请各考场根据试音情况将音量调整到最佳状态。
+W1: Hi, John! What's your plan coming summer vacation?
+M1: I'm not sure. My parents ask me to study at home, but I'd like to spend it abroad.
+W2: Which countries would you like to go to?
+M2: I have no idea. I just want to relax, because I felt tired these days. What about you Tina?
+W1: I plan to do part time jobs. Then, I will take it to learn to play the violin.
+M1: Sound great!
+D:
+C: 试音到此结束。
+P: 2
+D:
+C: 请看黑板，检查、清点，核对本场考试科目，试卷张数，页数，若发现科目不对或缺页、试题漏印、字迹不清、试卷有破损、污染等，请立即举手报告。请在试卷规定位置填写本人的准考证号和姓名。答题卡上选择题答案必须使用 2B 铅笔按 "填涂样本" 正确填涂，非选择题答案必须使用 0.5 毫米黑色字迹签字笔书写。写在试卷、草稿纸上或非题号对应区域的答案一律无效。严禁在答题卡上做任何标记。试卷空白处均可作为草稿纸使用。开考铃声响起后才能动笔答题。
+P: 5
+D:
+C: 请看听力部分第一节：第一节 听下面五个句子，从每小题所给的A、B、C三幅图中选出与句子内容相符的选项，并标在试卷的相应位置，听完每个句子后，你都有五秒钟的时间作答和阅读下一小题。每个句子读两遍。
+P: 3
+W1: 1. We are going to the cinema tonight.
+P: 5
+W1: 1. We are going to the cinema tonight.
+P: 5
+W2: 2. I wish you a happy New Year.
+P: 5
+W2: 2. I wish you a happy New Year.
+P: 5
+W1: 3. My sister is a nurse in the hospital.
+P: 5
+W1: 3. My sister is a nurse in the hospital.
+P: 5
+W2: 4. Vegetables are good for our health.
+P: 5
+W2: 4. Vegetables are good for our health.
+P: 5
+W1: 5. They often play tennis at weekends.
+P: 5
+W1: 5. They often play tennis at weekends.
+P: 5
+D:
+C: 第二节 听下面7段对话，根据你所听到的内容选择正确答案。共两节。
+C: 请听第一节，听下面4段对话，每段对话后有一个问题，从各小题所给的三个选项中选出最佳选项，并标在试卷的相应位置，听完每段对话后，你都有五秒钟的时间作答和阅读下一小题。每段对话读两遍。
+P: 3
+C: 听第1段对话，完成第6小题。现在你有5秒钟的时间阅读这个小题目。
+P: 5
+W1: I have joined the English club and the dance club. What about you, Jim?
+M1: I'm a member of the chess club.
+P: 2
+W1: I have joined the English club and the dance club. What about you, Jim?
+M1: I'm a member of the chess club.
+P: 5
+C: 听第 2 段对话，回答第 7 小题。现在你有5秒钟的时间阅读这个小题目。
+P: 5
+M1: Emily, what time shall we leave for Lucy's home? Her family party starts at 6:30.
+W2: It's 5 o'clock now. Let's leave at 5:30.
+P: 2
+M1: Emily, what time shall we leave for Lucy's home? Her family party starts at 6:30.
+W2: It's 5 o'clock now. Let's leave at 5:30.
+P: 5
+C: 听第 3 段对话，回答第 8 小题。现在你有5秒钟的时间阅读这个小题目。
+P: 5
+W1: Hi, Tony. You look stronger. Do you go to the gym every day?
+M2: Not really. My P.E. teacher advises me to go there twice a week, but I go three times.
+P: 2
+W1: Hi, Tony. You look stronger. Do you go to the gym every day?
+M2: Not really. My P.E. teacher advises me to go there twice a week, but I go three times.
+P: 5
+C: 听第 4 段对话，回答第 9 小题。现在你有5秒钟的时间阅读这个小题目。
+P: 5
+W2: Good evening, here is my passport.
+M1: Thank you. Your flight number is AC2118.
+P: 2
+W2: Good evening, here is my passport.
+M1: Thank you. Your flight number is AC2118.
+P: 5
+D:
+C: 请听第二节，听下面3段对话，每段对话后有两个问题，从各小题所给的三个选项中选出最佳选项，并标在试卷的相应位置，听完每段对话后，你都有五秒钟的时间作答和阅读下一小题。每段对话读两遍。
+P: 3
+C: 听第 5 段对话，回答第 10、11 小题。现在你有10秒钟的时间阅读这两个小题目。
+P: 10
+M1: Hello, Maria. The summer holiday is coming. Where are you going?
+W1: I'm going to Beijing.
+M2: Are you going with your parents?
+W2: No. I'm going with Han Mei, my good friend.
+M1: What's your plan for traveling?
+W1: We will stay there for three days. We're going to visit Tian'anmen Square on the first day, and the Summer Palace on the second day. We'll go to the Great Wall on the last day.
+M2: Have a good trip!
+P: 2
+M1: Hello, Maria. The summer holiday is coming. Where are you going?
+W1: I'm going to Beijing.
+M2: Are you going with your parents?
+W2: No. I'm going with Han Mei, my good friend.
+M1: What's your plan for traveling?
+W1: We will stay there for three days. We're going to visit Tian'anmen Square on the first day, and the Summer Palace on the second day. We'll go to the Great Wall on the last day.
+M2: Have a good trip!
+P: 10
+C: 听第 6 段对话，回答第 12、13 小题。现在你有10秒钟的时间阅读这两个小题目。
+P: 10
+W1: Hi, Li Lei. What's the matter with you?
+M1: Nothing. I just miss my family. It's almost the Spring Festival.
+W2: I'm sorry. I guess you miss your dog and your lucky money.
+M2: No, I miss my grandma's cooking.
+W1: Oh, you have special dishes for the festival, right?
+M1: Yes. We have dumplings, noodles, tangyuan and so on.
+W2: Wow, those things sound delicious. I'd love to try them.
+M2: Hey, why don't we make dumplings? We can invite our friends.
+W1: Wonderful! Let's get started.
+P: 2
+W1: Hi, Li Lei. What's the matter with you?
+M1: Nothing. I just miss my family. It's almost the Spring Festival.
+W2: I'm sorry. I guess you miss your dog and your lucky money.
+M2: No, I miss my grandma's cooking.
+W1: Oh, you have special dishes for the festival, right?
+M1: Yes. We have dumplings, noodles, tangyuan and so on.
+W2: Wow, those things sound delicious. I'd love to try them.
+M2: Hey, why don't we make dumplings? We can invite our friends.
+W1: Wonderful! Let's get started.
+P: 10
+C: 听第 7 段对话，回答第 14、15 小题。现在你有10秒钟的时间阅读这两个小题目。
+P: 10
+W1: Li Ping, I hear you have made a machine. Can you tell us something about it?
+M1: Well, it is a machine used for washing dishes.
+W2: Why did you have such a good idea?
+M2: Mom was busy with her work. I hoped she would have more time to relax.
+W1: Your mother must be pleased. What's your next plan?
+M1: I want very much to make a machine to water flowers for my dad.
+W2: I hope your dream will come true.
+M2: Thanks a lot.
+P: 2
+W1: Li Ping, I hear you have made a machine. Can you tell us something about it?
+M1: Well, it is a machine used for washing dishes.
+W2: Why did you have such a good idea?
+M2: Mom was busy with her work. I hoped she would have more time to relax.
+W1: Your mother must be pleased. What's your next plan?
+M1: I want very much to make a machine to water flowers for my dad.
+W2: I hope your dream will come true.
+M2: Thanks a lot.
+P: 10
+D:
+C: 第三节 听短文，根据你所听到的短文内容及要求，完成以下表格，每空一词，填写在试卷的相应位置，听短文前，你将20秒的时间阅读表格内容，听完后将给出20秒的作答时间。短文读三遍。
+P: 20
+W1: Good morning, boys and girls. Our School Sports Center is now open. Come and join us. The center is open from 4 o'clock to 6 o'clock in the afternoon on weekdays, and open all day on Sundays. There is an indoor swimming pool on the first floor. You can have a swim here. On the second floor, we have a sports hall for different kinds of ball games, such as basketball and volleyball. Most interestingly, you can experience e-sports on the third floor. You can wear VR glasses to watch videos about exciting matches. And you can have a ping-pong match with a robot. The coaches here will be glad to help you if you have problems. Welcome to our center. Thanks for listening.
+P: 2
+W2: Good morning, boys and girls. Our School Sports Center is now open. Come and join us. The center is open from 4 o'clock to 6 o'clock in the afternoon on weekdays, and open all day on Sundays. There is an indoor swimming pool on the first floor. You can have a swim here. On the second floor, we have a sports hall for different kinds of ball games, such as basketball and volleyball. Most interestingly, you can experience e-sports on the third floor. You can wear VR glasses to watch videos about exciting matches. And you can have a ping-pong match with a robot. The coaches here will be glad to help you if you have problems. Welcome to our center. Thanks for listening.
+P: 2
+W1: Good morning, boys and girls. Our School Sports Center is now open. Come and join us. The center is open from 4 o'clock to 6 o'clock in the afternoon on weekdays, and open all day on Sundays. There is an indoor swimming pool on the first floor. You can have a swim here. On the second floor, we have a sports hall for different kinds of ball games, such as basketball and volleyball. Most interestingly, you can experience e-sports on the third floor. You can wear VR glasses to watch videos about exciting matches. And you can have a ping-pong match with a robot. The coaches here will be glad to help you if you have problems. Welcome to our center. Thanks for listening.
+P: 20
+D:
+C: 听力考试到此结束。请考生将正确答案转写到答题卡上，接着完成试卷上的其他题。`;
+
+    // 播放提示音 - 改进版本
+    function playDingSound() {
+      return new Promise((resolve) => {
+        // 设置提示音音量
+        dingSound.volume = parseFloat(dingVolume.value);
+        
+        // 先暂停任何正在播放的提示音
+        dingSound.pause();
+        dingSound.currentTime = 0;
+        
+        // 尝试播放外部音频
+        const playPromise = dingSound.play();
+        
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            // 音频播放成功
+            dingSound.onended = resolve;
+          }).catch(error => {
+            console.log("外部提示音播放失败:", error);
+            // 如果外部音频失败，使用备选方法生成提示音
+            playFallbackDing().then(resolve);
+          });
+        } else {
+          // 如果play()返回undefined（某些旧浏览器），使用备选方法
+          playFallbackDing().then(resolve);
+        }
+      });
+    }
+
+    // 备选提示音 - 使用Web Audio API生成
+    function playFallbackDing() {
+      return new Promise((resolve) => {
+        try {
+          // 创建音频上下文
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          
+          // 配置振荡器（生成声音）
+          oscillator.type = 'sine';
+          oscillator.frequency.value = 800; // 频率 (Hz)
+          
+          // 配置增益（音量）
+          gainNode.gain.value = parseFloat(dingVolume.value) * 0.3;
+          
+          // 连接节点
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          // 播放声音
+          oscillator.start();
+          
+          // 设置声音淡出效果
+          gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
+          
+          // 停止播放
+          setTimeout(() => {
+            oscillator.stop();
+            audioContext.close();
+            resolve();
+          }, 500);
+          
+          // 标记使用备选提示音
+          if (!useFallbackDing) {
+            useFallbackDing = true;
+            showNotification('使用备选提示音生成方法', 'info');
+          }
+        } catch (error) {
+          console.log("备选提示音生成失败:", error);
+          // 如果所有方法都失败，等待一段时间后继续
+          setTimeout(resolve, 500);
+        }
+      });
+    }
+
+    // 初始化
+    function init() {
+      // 填充可用语音选项（增加重试机制）
+      populateVoiceOptions();
+      
+      // 监听语音列表加载完成
+      window.speechSynthesis.onvoiceschanged = populateVoiceOptions;
+      
+      // 文本输入事件监听
+      scriptInput.addEventListener('input', updateTextStats);
+      
+      // 按钮事件监听
+      clearTextBtn.addEventListener('click', clearText);
+      loadExamBtn.addEventListener('click', loadExamText);
+      generateBtn.addEventListener('click', generateAudio);
+      playBtn.addEventListener('click', togglePlayback);
+      playSelectedBtn.addEventListener('click', playSelectedParagraph);
+      stopBtn.addEventListener('click', stopPlayback);
+      
+      // 滑块事件监听
+      speechRate.addEventListener('input', () => {
+        rateValue.textContent = speechRate.value;
+      });
+      
+      // 提示音音量控制
+      dingVolume.addEventListener('input', () => {
+        dingSound.volume = parseFloat(dingVolume.value);
+      });
+      
+      // 测试提示音按钮
+      testDingBtn.addEventListener('click', () => {
+        playDingSound().then(() => {
+          showNotification('提示音测试完成', 'success');
+        });
+      });
+
+      // 测试语音按钮
+      testChineseVoice.addEventListener('click', () => testVoice(chineseVoice, '中文指令语音'));
+      testFemaleVoice1.addEventListener('click', () => testVoice(femaleVoice1, '英文女声1'));
+      testFemaleVoice2.addEventListener('click', () => testVoice(femaleVoice2, '英文女声2'));
+      testMaleVoice1.addEventListener('click', () => testVoice(maleVoice1, '英文男声1'));
+      testMaleVoice2.addEventListener('click', () => testVoice(maleVoice2, '英文男声2'));
+      
+      // 模态框事件监听
+      helpBtn.addEventListener('click', () => helpModal.classList.replace('hidden', 'flex'));
+      mobileHelpBtn.addEventListener('click', () => {
+        helpModal.classList.replace('hidden', 'flex');
+        mobileMenu.classList.add('hidden');
+      });
+      closeHelpBtn.addEventListener('click', () => helpModal.classList.add('hidden'));
+      
+      // 移动端菜单切换
+      mobileMenuBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+      });
+      
+      // 初始化文本统计
+      updateTextStats();
+      
+      // 预加载提示音
+      setTimeout(() => {
+        // 尝试预加载提示音，但不播放
+        dingSound.load();
+      }, 1000);
+    }
+
+    // 测试语音
+    function testVoice(voiceSelect, voiceName) {
+      if (!voiceSelect.value) {
+        showNotification(`请先选择${voiceName}`, 'error');
+        return;
+      }
+      
+      const voices = speechSynthesis.getVoices();
+      const voiceObj = voices.find(v => v.voiceURI === voiceSelect.value);
+      
+      if (!voiceObj) {
+        showNotification(`找不到选中的${voiceName}`, 'error');
+        return;
+      }
+      
+      const utterance = new SpeechSynthesisUtterance(`${voiceName}测试`);
+      utterance.voice = voiceObj;
+      utterance.rate = parseFloat(speechRate.value);
+      
+      utterance.onend = () => {
+        showNotification(`${voiceName}测试完成`, 'success');
+      };
+      
+      utterance.onerror = () => {
+        showNotification(`${voiceName}测试失败`, 'error');
+      };
+      
+      speechSynthesis.speak(utterance);
+    }
+
+    // 填充语音选项
+    function populateVoiceOptions() {
+      const voices = speechSynthesis.getVoices();
+      
+      // 过滤中文语音
+      const chineseVoices = voices.filter(voice => 
+        voice.lang.startsWith('zh') || 
+        voice.lang.startsWith('cmn') ||
+        voice.name.toLowerCase().includes('chinese')
+      );
+      
+      // 过滤英语语音
+      const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
+      
+      // 英语语音性别过滤
+      const femaleVoices = englishVoices.filter(voice => {
+        const name = voice.name.toLowerCase();
+        return name.includes('female') || name.includes('woman') || name.includes('girl') || 
+               name.includes('f') && !name.includes('male') ||
+               (!name.includes('male') && !name.includes('female')) && 
+               englishVoices.indexOf(voice) < englishVoices.length / 2;
+      });
+      
+      const maleVoices = englishVoices.filter(voice => {
+        const name = voice.name.toLowerCase();
+        return name.includes('male') || name.includes('man') || name.includes('boy') || 
+               name.includes('m');
+      });
+      
+      // 保存当前选中值
+      const currentChinese = chineseVoice.value;
+      const currentFemale1 = femaleVoice1.value;
+      const currentFemale2 = femaleVoice2.value;
+      const currentMale1 = maleVoice1.value;
+      const currentMale2 = maleVoice2.value;
+      
+      // 清空选项
+      chineseVoice.innerHTML = '';
+      femaleVoice1.innerHTML = '';
+      femaleVoice2.innerHTML = '';
+      maleVoice1.innerHTML = '';
+      maleVoice2.innerHTML = '';
+      
+      // 处理中文语音选项
+      if (chineseVoices.length > 0) {
+        chineseVoices.forEach(voice => {
+          const option = document.createElement('option');
+          option.value = voice.voiceURI;
+          option.textContent = `${voice.lang} - ${voice.name}`;
+          chineseVoice.appendChild(option);
+        });
+      } else {
+        // 如果没有找到中文语音，使用通用语音作为备选
+        if (voices.length > 0) {
+          voices.forEach(voice => {
+            const option = document.createElement('option');
+            option.value = voice.voiceURI;
+            option.textContent = `${voice.lang} - ${voice.name} (备选)`;
+            chineseVoice.appendChild(option);
+          });
+          showNotification('未检测到专用中文语音，已加载备选语音', 'warning');
+        } else {
+          const option = document.createElement('option');
+          option.value = '';
+          option.textContent = '未检测到语音，请刷新页面';
+          chineseVoice.appendChild(option);
+        }
+      }
+      
+      // 处理女声1选项
+      if (femaleVoices.length > 0) {
+        femaleVoices.forEach(voice => {
+          const option = document.createElement('option');
+          option.value = voice.voiceURI;
+          option.textContent = `${voice.lang} - ${voice.name}`;
+          femaleVoice1.appendChild(option);
+        });
+      } else {
+        if (englishVoices.length > 0) {
+          englishVoices.forEach(voice => {
+            const option = document.createElement('option');
+            option.value = voice.voiceURI;
+            option.textContent = `${voice.lang} - ${voice.name} (备选)`;
+            femaleVoice1.appendChild(option);
+          });
+          showNotification('未检测到专用女声，已加载备选语音', 'warning');
+        } else {
+          const option = document.createElement('option');
+          option.value = '';
+          option.textContent = '未检测到英语语音，请刷新页面';
+          femaleVoice1.appendChild(option);
+        }
+      }
+      
+      // 处理女声2选项 - 使用与女声1相同的选项
+      if (femaleVoices.length > 0) {
+        femaleVoices.forEach(voice => {
+          const option = document.createElement('option');
+          option.value = voice.voiceURI;
+          option.textContent = `${voice.lang} - ${voice.name}`;
+          femaleVoice2.appendChild(option);
+        });
+      } else {
+        if (englishVoices.length > 0) {
+          englishVoices.forEach(voice => {
+            const option = document.createElement('option');
+            option.value = voice.voiceURI;
+            option.textContent = `${voice.lang} - ${voice.name} (备选)`;
+            femaleVoice2.appendChild(option);
+          });
+        } else {
+          const option = document.createElement('option');
+          option.value = '';
+          option.textContent = '未检测到英语语音，请刷新页面';
+          femaleVoice2.appendChild(option);
+        }
+      }
+      
+      // 处理男声1选项
+      if (maleVoices.length > 0) {
+        maleVoices.forEach(voice => {
+          const option = document.createElement('option');
+          option.value = voice.voiceURI;
+          option.textContent = `${voice.lang} - ${voice.name}`;
+          maleVoice1.appendChild(option);
+        });
+      } else {
+        const remainingVoices = englishVoices.filter(v => !femaleVoices.includes(v));
+        if (remainingVoices.length > 0) {
+          remainingVoices.forEach(voice => {
+            const option = document.createElement('option');
+            option.value = voice.voiceURI;
+            option.textContent = `${voice.lang} - ${voice.name} (备选)`;
+            maleVoice1.appendChild(option);
+          });
+        } else if (englishVoices.length > 0) {
+          englishVoices.forEach(voice => {
+            const option = document.createElement('option');
+            option.value = voice.voiceURI;
+            option.textContent = `${voice.lang} - ${voice.name} (备选)`;
+            maleVoice1.appendChild(option);
+          });
+        } else {
+          const option = document.createElement('option');
+          option.value = '';
+          option.textContent = '未检测到英语语音，请刷新页面';
+          maleVoice1.appendChild(option);
+        }
+      }
+      
+      // 处理男声2选项 - 使用与男声1相同的选项
+      if (maleVoices.length > 0) {
+        maleVoices.forEach(voice => {
+          const option = document.createElement('option');
+          option.value = voice.voiceURI;
+          option.textContent = `${voice.lang} - ${voice.name}`;
+          maleVoice2.appendChild(option);
+        });
+      } else {
+        const remainingVoices = englishVoices.filter(v => !femaleVoices.includes(v));
+        if (remainingVoices.length > 0) {
+          remainingVoices.forEach(voice => {
+            const option = document.createElement('option');
+            option.value = voice.voiceURI;
+            option.textContent = `${voice.lang} - ${voice.name} (备选)`;
+            maleVoice2.appendChild(option);
+          });
+        } else if (englishVoices.length > 0) {
+          englishVoices.forEach(voice => {
+            const option = document.createElement('option');
+            option.value = voice.voiceURI;
+            option.textContent = `${voice.lang} - ${voice.name} (备选)`;
+            maleVoice2.appendChild(option);
+          });
+        } else {
+          const option = document.createElement('option');
+          option.value = '';
+          option.textContent = '未检测到英语语音，请刷新页面';
+          maleVoice2.appendChild(option);
+        }
+      }
+      
+      // 恢复选中值或使用第一个选项
+      if (chineseVoices.some(v => v.voiceURI === currentChinese) || 
+          (chineseVoice.options.length > 0 && chineseVoice.options[0].value !== '')) {
+        if (currentChinese && chineseVoice.querySelector(`option[value="${currentChinese}"]`)) {
+          chineseVoice.value = currentChinese;
+        } else {
+          chineseVoice.value = chineseVoice.options[0].value;
+        }
+      }
+      
+      if (femaleVoices.some(v => v.voiceURI === currentFemale1) || 
+          (femaleVoice1.options.length > 0 && femaleVoice1.options[0].value !== '')) {
+        if (currentFemale1 && femaleVoice1.querySelector(`option[value="${currentFemale1}"]`)) {
+          femaleVoice1.value = currentFemale1;
+        } else {
+          femaleVoice1.value = femaleVoice1.options[0].value;
+        }
+      }
+      
+      if (femaleVoices.some(v => v.voiceURI === currentFemale2) || 
+          (femaleVoice2.options.length > 0 && femaleVoice2.options[0].value !== '')) {
+        if (currentFemale2 && femaleVoice2.querySelector(`option[value="${currentFemale2}"]`)) {
+          femaleVoice2.value = currentFemale2;
+        } else {
+          femaleVoice2.value = femaleVoice2.options[0].value;
+        }
+      }
+      
+      if (maleVoices.some(v => v.voiceURI === currentMale1) ||
+          (maleVoice1.options.length > 0 && maleVoice1.options[0].value !== '')) {
+        if (currentMale1 && maleVoice1.querySelector(`option[value="${currentMale1}"]`)) {
+          maleVoice1.value = currentMale1;
+        } else {
+          maleVoice1.value = maleVoice1.options[0].value;
+        }
+      }
+      
+      if (maleVoices.some(v => v.voiceURI === currentMale2) ||
+          (maleVoice2.options.length > 0 && maleVoice2.options[0].value !== '')) {
+        if (currentMale2 && maleVoice2.querySelector(`option[value="${currentMale2}"]`)) {
+          maleVoice2.value = currentMale2;
+        } else {
+          maleVoice2.value = maleVoice2.options[0].value;
+        }
+      }
+      
+      // 最多尝试5次加载语音
+      if ((chineseVoices.length === 0 || englishVoices.length === 0) && voiceLoadAttempts < 5) {
+        voiceLoadAttempts++;
+        setTimeout(populateVoiceOptions, 1000);
+      }
+    }
+
+    // 生成考试音频
+    async function generateAudio() {
+      // 停止任何正在进行的语音
+      stopPlayback();
+      
+      // 检查浏览器支持
+      if (!('speechSynthesis' in window)) {
+        showNotification('您的浏览器不支持语音合成功能，请使用Chrome或Edge浏览器', 'error');
+        return;
+      }
+      
+      // 检查语音是否可用
+      const voices = speechSynthesis.getVoices();
+      if (voices.length === 0) {
+        showNotification('语音库尚未加载完成，请等待几秒后重试', 'warning');
+        return;
+      }
+      
+      // 检查语音是否选择
+      if (!femaleVoice1.value || !femaleVoice2.value || !maleVoice1.value || !maleVoice2.value || !chineseVoice.value) {
+        showNotification('请先选择所有可用的语音', 'error');
+        return;
+      }
+      
+      // 检查输入内容
+      const segments = parseScript();
+      if (!segments) {
+        showNotification('请输入有效的听力文稿', 'error');
+        return;
+      }
+      
+      // 准备生成
+      generateBtn.disabled = true;
+      generateBtn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i> 生成中...';
+      
+      try {
+        // 创建语音合成对象列表
+        utterances = [];
+        const voices = speechSynthesis.getVoices();
+        const femaleVoice1Obj = voices.find(v => v.voiceURI === femaleVoice1.value) || voices[0];
+        const femaleVoice2Obj = voices.find(v => v.voiceURI === femaleVoice2.value) || voices[0];
+        const maleVoice1Obj = voices.find(v => v.voiceURI === maleVoice1.value) || voices[1] || voices[0];
+        const maleVoice2Obj = voices.find(v => v.voiceURI === maleVoice2.value) || voices[1] || voices[0];
+        const chineseVoiceObj = voices.find(v => v.voiceURI === chineseVoice.value) || voices[0];
+        const rate = parseFloat(speechRate.value);
+        
+        segments.forEach((segment, index) => {
+          if (segment.type === 'pause') {
+            // 创建停顿对象
+            utterances.push({
+              type: 'pause',
+              index: index,
+              duration: segment.duration,
+              text: `停顿 ${segment.duration} 秒`
+            });
+          } else if (segment.type === 'ding') {
+            // 提示音标记
+            utterances.push({
+              type: 'ding',
+              index: index,
+              text: '提示音'
+            });
+          } else {
+            // 创建语音合成对象
+            const utterance = new SpeechSynthesisUtterance(segment.text);
+            utterance.rate = rate;
+            
+            // 根据类型设置不同的语音
+            if (segment.type === 'chinese') {
+              utterance.voice = chineseVoiceObj;
+              utterance.lang = chineseVoiceObj.lang;
+            } else if (segment.type === 'female1') {
+              utterance.voice = femaleVoice1Obj;
+              utterance.lang = femaleVoice1Obj.lang;
+            } else if (segment.type === 'female2') {
+              utterance.voice = femaleVoice2Obj;
+              utterance.lang = femaleVoice2Obj.lang;
+            } else if (segment.type === 'male1') {
+              utterance.voice = maleVoice1Obj;
+              utterance.lang = maleVoice1Obj.lang;
+            } else if (segment.type === 'male2') {
+              utterance.voice = maleVoice2Obj;
+              utterance.lang = maleVoice2Obj.lang;
+            }
+            
+            utterance.index = index;
+            utterance.type = segment.type;
+            
+            utterances.push(utterance);
+          }
+        });
+        
+        // 显示音频播放区
+        audioPlayerContainer.classList.remove('hidden');
+        // 生成段落列表
+        generateSegmentsList(segments);
+        
+        // 启用按钮
+        playBtn.disabled = false;
+        
+        showNotification('考试音频生成完成', 'success');
+      } catch (error) {
+        console.error('生成音频失败:', error);
+        showNotification('生成音频失败，请重试', 'error');
+      } finally {
+        // 恢复按钮状态
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<i class="fa fa-magic mr-2"></i> 生成考试音频';
+      }
+    }
+
+    // 更新文本统计
+    function updateTextStats() {
+      const text = scriptInput.value;
+      charCount.textContent = `${text.length} 字符`;
+      lineCount.textContent = `${text.split('\n').filter(line => line.trim() !== '').length} 行`;
+    }
+
+    // 清除文本
+    function clearText() {
+      if (confirm('确定要清空文本内容吗？')) {
+        scriptInput.value = '';
+        updateTextStats();
+        showNotification('文本已清空', 'info');
+      }
+    }
+
+    // 加载考试文本
+    function loadExamText() {
+      scriptInput.value = fujianExam2022;
+      updateTextStats();
+      showNotification('已加载2022年福建省中考英语听力素材（带提示音）', 'info');
+    }
+
+    // 解析脚本 - 修复停顿时间识别问题
+    function parseScript() {
+      const lines = scriptInput.value.split('\n');
+      const segments = [];
+      
+      lines.forEach((line, index) => {
+        const trimmedLine = line.trim();
+        if (trimmedLine === '') return;
+        
+        let type, content, duration;
+        
+        if (trimmedLine.startsWith('C:')) {
+          type = 'chinese';
+          content = trimmedLine.substring(2).trim();
+        } else if (trimmedLine.startsWith('W1:')) {
+          type = 'female1';
+          content = trimmedLine.substring(3).trim();
+        } else if (trimmedLine.startsWith('W2:')) {
+          type = 'female2';
+          content = trimmedLine.substring(3).trim();
+        } else if (trimmedLine.startsWith('M1:')) {
+          type = 'male1';
+          content = trimmedLine.substring(3).trim();
+        } else if (trimmedLine.startsWith('M2:')) {
+          type = 'male2';
+          content = trimmedLine.substring(3).trim();
+        } else if (trimmedLine.startsWith('P:')) {
+          type = 'pause';
+          // 修复停顿时间提取问题
+          const durationText = trimmedLine.substring(2).trim();
+          duration = parseFloat(durationText);
+          if (isNaN(duration) || duration <= 0) {
+            duration = 2; // 默认2秒
+          }
+          content = `停顿 ${duration} 秒`;
+        } else if (trimmedLine.startsWith('D:')) {
+          type = 'ding';
+          content = '叮咚提示音';
+        } else {
+          showNotification(`第 ${index + 1} 行格式错误，必须以 C:、W1:、W2:、M1:、M2:、P: 或 D: 开头`, 'error');
+          return null;
+        }
+        
+        segments.push({
+          type,
+          text: content,
+          duration,
+          index: segments.length
+        });
+      });
+      
+      return segments.length > 0 ? segments : null;
+    }
+
+    // 生成段落列表
+    function generateSegmentsList(segments) {
+      paragraphsList.innerHTML = '';
+      
+      segments.forEach((segment, index) => {
+        const segmentElement = document.createElement('div');
+        segmentElement.className = 'p-2 rounded border hover:bg-gray-50 cursor-pointer transition-colors flex items-start';
+        segmentElement.dataset.index = index;
+        
+        const typeIndicator = document.createElement('span');
+        switch(segment.type) {
+          case 'chinese':
+            typeIndicator.className = 'inline-block w-2 h-2 rounded-full bg-green-500 mr-2 mt-1.5';
+            break;
+          case 'female1':
+            typeIndicator.className = 'inline-block w-2 h-2 rounded-full bg-pink-500 mr-2 mt-1.5';
+            break;
+          case 'female2':
+            typeIndicator.className = 'inline-block w-2 h-2 rounded-full bg-purple-500 mr-2 mt-1.5';
+            break;
+          case 'male1':
+            typeIndicator.className = 'inline-block w-2 h-2 rounded-full bg-blue-500 mr-2 mt-1.5';
+            break;
+          case 'male2':
+            typeIndicator.className = 'inline-block w-2 h-2 rounded-full bg-indigo-500 mr-2 mt-1.5';
+            break;
+          case 'pause':
+            typeIndicator.className = 'inline-block w-2 h-2 rounded-full bg-gray-400 mr-2 mt-1.5';
+            break;
+          case 'ding':
+            typeIndicator.className = 'inline-block w-2 h-2 rounded-full bg-yellow-500 mr-2 mt-1.5';
+            break;
+        }
+        
+        const contentElement = document.createElement('div');
+        contentElement.className = 'flex-1 text-sm';
+        contentElement.textContent = segment.text;
+        
+        const playIcon = document.createElement('i');
+        playIcon.className = 'fa fa-play-circle text-primary opacity-70 hover:opacity-100 transition-opacity';
+        
+        segmentElement.appendChild(typeIndicator);
+        segmentElement.appendChild(contentElement);
+        segmentElement.appendChild(playIcon);
+        
+        segmentElement.addEventListener('click', () => {
+          document.querySelectorAll('#paragraphsList > div').forEach(el => {
+            el.classList.remove('bg-primary/5', 'border-primary');
+          });
+          segmentElement.classList.add('bg-primary/5', 'border-primary');
+          selectedParagraph = index;
+        });
+        
+        paragraphsList.appendChild(segmentElement);
+      });
+    }
+
+    // 切换播放/暂停
+    function togglePlayback() {
+      if (isPlaying) {
+        pausePlayback();
+      } else {
+        startPlayback();
+      }
+    }
+
+    // 开始播放
+    function startPlayback() {
+      if (utterances.length === 0) return;
+      
+      isPlaying = true;
+      playBtn.innerHTML = '<i class="fa fa-pause mr-2"></i> 暂停播放';
+      
+      if (currentUtteranceIndex === 0) {
+        speechSynthesis.cancel();
+      }
+      
+      // 依此播放所有片段
+      playNextUtterance(currentUtteranceIndex);
+    }
+
+    // 播放下一个语音片段 - 彻底修复停顿处理
+    function playNextUtterance(index) {
+      console.log(`播放片段 ${index}, 类型: ${utterances[index]?.type}, 总片段数: ${utterances.length}`);
+      
+      if (index >= utterances.length || !isPlaying) {
+        // 播放结束
+        console.log('播放结束');
+        isPlaying = false;
+        currentUtteranceIndex = 0;
+        playBtn.innerHTML = '<i class="fa fa-play mr-2"></i> 开始播放考试';
+        return;
+      }
+      
+      currentUtteranceIndex = index;
+      const utterance = utterances[index];
+      
+      // 根据类型处理不同的播放方式
+      if (utterance.type === 'ding') {
+        console.log('播放提示音');
+        // 播放提示音
+        playDingSound().then(() => {
+          // 提示音播放完成后继续下一个
+          playNextUtterance(index + 1);
+        });
+      } else if (utterance.type === 'pause' && utterance.duration) {
+        console.log(`开始停顿 ${utterance.duration} 秒`);
+        // 处理停顿 - 使用setTimeout而不是语音合成
+        pauseTimeout = setTimeout(() => {
+          console.log(`停顿结束`);
+          playNextUtterance(index + 1);
+        }, utterance.duration * 1000);
+      } else if (typeof utterance === 'object' && 'text' in utterance) {
+        console.log(`播放语音: ${utterance.text.substring(0, 30)}...`);
+        // 处理语音合成
+        const currentUtterance = new SpeechSynthesisUtterance(utterance.text);
+        currentUtterance.rate = parseFloat(speechRate.value);
+        
+        // 设置对应的语音
+        const voices = speechSynthesis.getVoices();
+        if (utterance.type === 'chinese') {
+          currentUtterance.voice = voices.find(v => v.voiceURI === chineseVoice.value) || voices[0];
+        } else if (utterance.type === 'female1') {
+          currentUtterance.voice = voices.find(v => v.voiceURI === femaleVoice1.value) || voices[0];
+        } else if (utterance.type === 'female2') {
+          currentUtterance.voice = voices.find(v => v.voiceURI === femaleVoice2.value) || voices[0];
+        } else if (utterance.type === 'male1') {
+          currentUtterance.voice = voices.find(v => v.voiceURI === maleVoice1.value) || voices[1] || voices[0];
+        } else if (utterance.type === 'male2') {
+          currentUtterance.voice = voices.find(v => v.voiceURI === maleVoice2.value) || voices[1] || voices[0];
+        }
+        
+        currentUtterance.onend = () => {
+          console.log(`语音播放结束`);
+          playNextUtterance(index + 1);
+        };
+        
+        currentUtterance.onerror = (event) => {
+          console.error('语音播放错误:', event);
+          playNextUtterance(index + 1);
+        };
+        
+        speechSynthesis.speak(currentUtterance);
+      } else {
+        // 未知类型，直接继续
+        console.log('未知类型，直接继续');
+        playNextUtterance(index + 1);
+      }
+    }
+
+    // 暂停播放
+    function pausePlayback() {
+      if (isPlaying) {
+        speechSynthesis.pause();
+        // 清除停顿计时器
+        if (pauseTimeout) {
+          clearTimeout(pauseTimeout);
+          pauseTimeout = null;
+        }
+        isPlaying = false;
+        playBtn.innerHTML = '<i class="fa fa-play mr-2"></i> 开始播放考试';
+      }
+    }
+
+    // 停止播放
+    function stopPlayback() {
+      speechSynthesis.cancel();
+      // 清除停顿计时器
+      if (pauseTimeout) {
+        clearTimeout(pauseTimeout);
+        pauseTimeout = null;
+      }
+      isPlaying = false;
+      currentUtteranceIndex = 0;
+      playBtn.innerHTML = '<i class="fa fa-play mr-2"></i> 开始播放考试';
+    }
+
+    // 播放选中段落
+    function playSelectedParagraph() {
+      if (selectedParagraph === -1 || !utterances.length) {
+        showNotification('请先选择一个部分', 'warning');
+        return;
+      }
+      
+      stopPlayback();
+      
+      currentUtteranceIndex = selectedParagraph;
+      isPlaying = true;
+      playBtn.innerHTML = '<i class="fa fa-pause mr-2"></i> 暂停播放';
+      
+      // 播放选中的段落
+      playNextUtterance(selectedParagraph);
+    }
+
+    // 显示通知
+    function showNotification(message, type = 'info') {
+      switch(type) {
+        case 'success':
+          notificationIcon.className = 'fa fa-check-circle mr-2';
+          notification.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg transform translate-y-0 opacity-100 transition-all duration-300 flex items-center';
+          break;
+        case 'error':
+          notificationIcon.className = 'fa fa-exclamation-circle mr-2';
+          notification.className = 'fixed bottom-4 right-4 bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg transform translate-y-0 opacity-100 transition-all duration-300 flex items-center';
+          break;
+        case 'warning':
+          notificationIcon.className = 'fa fa-exclamation-triangle mr-2';
+          notification.className = 'fixed bottom-4 right-4 bg-yellow-600 text-white px-4 py-3 rounded-lg shadow-lg transform translate-y-0 opacity-100 transition-all duration-300 flex items-center';
+          break;
+        default:
+          notificationIcon.className = 'fa fa-info-circle mr-2';
+          notification.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-3 rounded-lg shadow-lg transform translate-y-0 opacity-100 transition-all duration-300 flex items-center';
+      }
+      
+      notificationText.textContent = message;
+      
+      setTimeout(() => {
+        notification.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center';
+      }, 5000);
+    }
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
